@@ -36,6 +36,7 @@
             <p class="text-gray-300">مرحبًا <span id="storeNameDisplay" class="gold-text font-bold">...</span></p>
             <div id="pulseCount" class="text-3xl font-black gold-text">0</div>
             <p class="text-xs">عميلات تم رصدهن اليوم</p>
+            <div id="fomoText" class="text-xs gold-text mt-2 animate-pulse">باقي 16 يوماً على العيد.. لا تدع منافسيك يسبقونك</div>
         </div>
         <div id="leadsList" class="space-y-3"><div class="skeleton"></div><div class="skeleton"></div></div>
         <button id="refreshBtn" class="btn-gold w-full py-2">🔄 تحديث يدوي</button>
@@ -85,6 +86,8 @@
     // التكوين وعنوان Web App
     // ============================================================
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyNaB4D8t44J-LZrBw_joqLOBMUpnc8pzBfjrdV08lA4eIZT9f9pV_E48d_ALvY36vV/exec";
+    // ADMIN_CHAT_ID: استبدل هذا الرقم بالـ chat_id الخاص بك (من @userinfobot)
+    const ADMIN_CHAT_ID = 6643939693;
     let currentChatId = null;
     let currentStore = { name: "", package: "free", analysesLimit: 5, analysesUsed: 0, endDate: "" };
 
@@ -104,11 +107,21 @@
         if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
             currentChatId = window.Telegram.WebApp.initDataUnsafe.user.id;
         } else {
-            // وضع تجريبي: نستخدم معرف وهمي للاختبار
-            currentChatId = 6643939693;  // يمكنك تغييره لمعرفك الحقيقي
-            console.warn("⚠️ استخدام معرف وهمي للاختبار");
+            // وضع اختبار: استخدم معرفًا تجريبيًا (يفضل تغييره إلى معرفك الحقيقي عند الاختبار)
+            currentChatId = 6643939693;
         }
     } catch(e) { currentChatId = 6643939693; }
+
+    // ========== حساب الأيام المتبقية للعيد ==========
+    function updateFomo() {
+        const today = new Date();
+        const year = today.getFullYear();
+        let eid = new Date(year, 5, 6); // 6 يونيو تقريباً (قابل للتعديل)
+        if (today > eid) eid = new Date(year + 1, 5, 6);
+        const diffDays = Math.ceil((eid - today) / (1000 * 60 * 60 * 24));
+        const fomoDiv = document.getElementById('fomoText');
+        if (fomoDiv) fomoDiv.innerText = `⏳ باقي ${diffDays} يوماً على العيد.. لا تدع منافسيك يسبقونك لهذه الصيدات`;
+    }
 
     // ========== جلب بيانات المستخدم من الـ API ==========
     async function loadUserData() {
@@ -127,7 +140,7 @@
                 if (currentStore.package === 'gold') badge.innerHTML = '👑 ذهبية';
                 else if (currentStore.package === 'silver') badge.innerHTML = '🥈 فضية';
                 else badge.innerHTML = '🆓 تجريبي';
-                // تحديث معلومات الباقة في تبويب الباقات
+                // تحديث معلومات الباقة
                 let remaining = currentStore.analysesLimit - currentStore.analysesUsed;
                 if (remaining < 0) remaining = 0;
                 document.getElementById('currentPackageInfo').innerHTML = `
@@ -142,10 +155,11 @@
         } catch(e) { console.error(e); }
     }
 
-    // ========== جلب العملاء (Leads) وعرضهم ==========
+    // ========== جلب العملاء (Leads) وعرضهم مع النسخ والتواصل ==========
     async function loadLeads() {
         const leadsContainer = document.getElementById('leadsList');
         leadsContainer.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
+        updateFomo(); // تحديث العد التنازلي
         try {
             const res = await fetch(`${WEB_APP_URL}?action=getLeads`);
             const data = await res.json();
@@ -155,21 +169,67 @@
                 let html = '';
                 for (let lead of data.leads) {
                     if (lead.date && lead.date.slice(0,10) === todayStr) todayCount++;
+                    // حساب حرارة العميل من عمود heat (افتراضي 5)
+                    const heat = lead.heat || 5;
+                    let fireIcons = '';
+                    for (let i = 0; i < Math.min(heat, 5); i++) fireIcons += '🔥';
+                    const contacted = lead.contacted === true || lead.contacted === 'TRUE';
                     html += `
-                        <div class="card-bg p-3 border-r-4 border-gold">
-                            <div class="flex justify-between"><span class="font-bold gold-text">${lead.username}</span><span>🔥 ${lead.intent || '?'}</span></div>
+                        <div class="card-bg p-3 border-r-4 border-gold relative" data-lead-idx="${lead.idx || ''}">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold gold-text">${lead.username}</span>
+                                <span class="text-sm">${fireIcons} ${heat}/10</span>
+                            </div>
                             <p class="text-sm text-gray-300 mt-1">${lead.tweet.substring(0, 80)}${lead.tweet.length>80?'...':''}</p>
-                            <div class="flex gap-2 mt-2">
-                                <button class="reply-btn text-xs bg-gold/20 px-3 py-1 rounded-full text-gold" data-reply="${(lead.reply || '').replace(/"/g, '&quot;')}">📋 عرض الرد</button>
+                            <div class="flex flex-wrap gap-2 mt-2">
+                                <button class="reply-btn text-xs bg-gold/20 px-3 py-1 rounded-full text-gold" data-reply="${(lead.reply || '').replace(/"/g, '&quot;')}">📋 عرض الرد والنسخ</button>
                                 <a href="${lead.url}" target="_blank" class="text-xs bg-gray-700 px-3 py-1 rounded-full">🔗 التغريدة</a>
+                                ${!contacted ? `<button class="contact-btn text-xs bg-green-800 px-3 py-1 rounded-full text-white" data-lead-id="${lead.idx || ''}">✅ تم التواصل</button>` : '<span class="text-xs text-green-500 px-3 py-1">✅ تم التواصل</span>'}
                             </div>
                         </div>
                     `;
                 }
                 document.getElementById('pulseCount').innerText = todayCount;
                 leadsContainer.innerHTML = html;
+                // ربط أزرار عرض الرد مع النسخ
                 document.querySelectorAll('.reply-btn').forEach(btn => {
-                    btn.addEventListener('click', () => alert(btn.getAttribute('data-reply')));
+                    btn.addEventListener('click', () => {
+                        const replyText = btn.getAttribute('data-reply');
+                        const modal = document.createElement('div');
+                        modal.className = 'fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4';
+                        modal.innerHTML = `
+                            <div class="bg-gray-900 rounded-2xl p-5 max-w-sm w-full space-y-3">
+                                <h3 class="gold-text font-bold">📋 عرض الرد المقترح</h3>
+                                <textarea id="replyContent" class="w-full bg-gray-800 text-white p-3 rounded-xl text-sm" rows="5" readonly>${replyText}</textarea>
+                                <button id="copyReplyBtn" class="btn-gold w-full py-2">📋 نسخ الرد</button>
+                                <button id="closeModalBtn" class="bg-gray-700 w-full py-2 rounded-xl">إغلاق</button>
+                            </div>
+                        `;
+                        document.body.appendChild(modal);
+                        document.getElementById('copyReplyBtn').onclick = () => {
+                            navigator.clipboard.writeText(replyText);
+                            alert('✅ تم نسخ الرد إلى الحافظة');
+                        };
+                        document.getElementById('closeModalBtn').onclick = () => modal.remove();
+                    });
+                });
+                // ربط أزرار "تم التواصل" (تحديث العمود contacted)
+                document.querySelectorAll('.contact-btn').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        const leadId = btn.getAttribute('data-lead-id');
+                        if (!leadId) return;
+                        // إرسال طلب تحديث إلى Web App (يجب إضافة دالة في Apps Script لتحديث contacted)
+                        try {
+                            await fetch(WEB_APP_URL, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ action: 'updateLeadContacted', leadId: leadId, contacted: true })
+                            });
+                            btn.remove();
+                            const parent = btn.parentElement;
+                            parent.innerHTML += '<span class="text-xs text-green-500 px-3 py-1">✅ تم التواصل</span>';
+                        } catch(e) { alert('حدث خطأ أثناء تحديث الحالة'); }
+                    });
                 });
             } else {
                 leadsContainer.innerHTML = '<div class="text-center text-gray-500 py-8">لا توجد تحليلات حديثة</div>';
@@ -214,6 +274,48 @@
         await fetch(WEB_APP_URL, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ action: 'updateLastActive', chatId: currentChatId }) });
     }
 
+    // ========== لوحة الإدارة المخفية (للمسؤول فقط) ==========
+    async function showAdminPanel() {
+        if (currentChatId != ADMIN_CHAT_ID) return;
+        const adminHtml = `
+            <div id="adminPanel" class="fixed inset-0 bg-black/95 z-50 p-4 overflow-auto">
+                <div class="max-w-md mx-auto space-y-4">
+                    <div class="flex justify-between items-center"><h2 class="text-xl gold-text font-bold">🛠️ لوحة الإدارة</h2><button id="closeAdminBtn" class="bg-red-800 px-3 py-1 rounded-full">✖️ إغلاق</button></div>
+                    <div class="card-bg p-4"><div id="adminStats" class="text-sm space-y-1">جاري تحميل الإحصائيات...</div></div>
+                    <div class="card-bg p-4"><h3 class="gold-text font-bold mb-2">📋 آخر المشتركين</h3><div id="adminUsersList" class="space-y-2 text-sm"></div></div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', adminHtml);
+        document.getElementById('closeAdminBtn').onclick = () => document.getElementById('adminPanel').remove();
+
+        // جلب الإحصائيات والمشتركين
+        try {
+            const res = await fetch(`${WEB_APP_URL}?action=getAdminData`);
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('adminStats').innerHTML = `
+                    <p>👥 إجمالي المشتركين: ${data.totalSubscribers}</p>
+                    <p>📊 تحليلات هذا الشهر: ${data.monthlyLeads}</p>
+                    <p>🟢 نشطاء اليوم: ${data.activeToday}</p>
+                `;
+                let usersHtml = '';
+                for (let u of data.recentUsers) {
+                    usersHtml += `
+                        <div class="bg-gray-800 p-2 rounded-lg flex justify-between items-center">
+                            <span>${u.username || u.chatId}</span>
+                            <div class="flex gap-2">
+                                <a href="https://t.me/${u.username}" target="_blank" class="text-gold underline text-xs">👁️ عرض</a>
+                                <a href="https://docs.google.com/spreadsheets/d/1765j-k6ljLpmhtSOPUCEOwaECrBnodUoIQuaYl_I6Ec/edit" target="_blank" class="text-gold underline text-xs">✏️ تعديل</a>
+                            </div>
+                        </div>
+                    `;
+                }
+                document.getElementById('adminUsersList').innerHTML = usersHtml || '<p class="text-gray-500">لا يوجد مشتركون بعد</p>';
+            }
+        } catch(e) { console.error(e); }
+    }
+
     // ========== تبديل التبويبات ==========
     function switchTab(tab) {
         radarDiv.classList.add('hidden');
@@ -226,6 +328,8 @@
         if (tab === 'radar') navRadar.classList.add('gold-text', 'tab-active');
         if (tab === 'packages') navPackages.classList.add('gold-text', 'tab-active');
         if (tab === 'settings') navSettings.classList.add('gold-text', 'tab-active');
+        // إذا كان المستخدم مسؤولاً وأضغط على الإعدادات، نظهر لوحة الإدارة
+        if (tab === 'settings' && currentChatId == ADMIN_CHAT_ID) showAdminPanel();
     }
 
     // ========== الثيمات ==========
@@ -254,8 +358,7 @@
     });
     updateLastActive();
 
-    // إعلام Telegram أن التطبيق جاهز
     if (window.Telegram && window.Telegram.WebApp) { window.Telegram.WebApp.ready(); window.Telegram.WebApp.expand(); }
 </script>
 </body>
-            </html>
+    </html>
