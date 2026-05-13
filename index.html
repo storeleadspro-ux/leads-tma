@@ -9,14 +9,20 @@
         body { background: #0a0a0a; font-family: system-ui; }
         .card-bg { background: #1e1e1e; border-radius: 1.5rem; }
         .gold-text { color: #f59e0b; }
-        .btn-gold { background: #f59e0b; color: black; font-weight: bold; border-radius: 2rem; padding: 0.5rem 1rem; }
+        .btn-gold { background: #f59e0b; color: black; font-weight: bold; border-radius: 2rem; padding: 0.5rem 1rem; transition: 0.2s; }
+        .btn-gold:hover { opacity: 0.9; transform: scale(0.98); }
         .tab-active { color: #f59e0b; border-bottom: 2px solid #f59e0b; }
         .skeleton { background: #2a2a2a; border-radius: 1rem; height: 80px; margin-bottom: 1rem; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+        .admin-table { width: 100%; font-size: 12px; border-collapse: collapse; }
+        .admin-table th, .admin-table td { padding: 6px; text-align: right; border-bottom: 1px solid #333; }
+        .feature-btn { background: #2a2a2a; border: 1px solid #f59e0b20; transition: 0.2s; }
+        .feature-btn:hover { background: #f59e0b20; border-color: #f59e0b; }
     </style>
 </head>
 <body class="text-white">
 
+<!-- الشريط العلوي -->
 <div class="fixed top-0 left-0 right-0 bg-black/90 backdrop-blur-lg border-b border-gray-800 z-10">
     <div class="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
         <div><h1 class="text-xl font-black gold-text">STORE LEADS PRO</h1><p class="text-xs text-gray-400">Intelligence Hub</p></div>
@@ -24,6 +30,7 @@
     </div>
 </div>
 
+<!-- المحتوى الرئيسي -->
 <div class="max-w-md mx-auto px-4 pt-20 pb-24">
     <!-- تبويب الرادار -->
     <div id="radarContent" class="space-y-4">
@@ -36,7 +43,7 @@
         <button id="refreshBtn" class="btn-gold w-full py-2">🔄 تحديث يدوي</button>
     </div>
 
-    <!-- تبويب الباقات (مبسط) -->
+    <!-- تبويب الباقات -->
     <div id="packagesContent" class="hidden space-y-4">
         <div class="card-bg p-5">
             <h3 class="gold-text font-bold mb-2">⭐ باقاتي</h3>
@@ -49,15 +56,33 @@
         <button id="upgradeContactBtn" class="btn-gold w-full py-2">📞 طلب ترقية</button>
     </div>
 
-    <!-- تبويب الإعدادات (للمسؤول فقط) -->
+    <!-- تبويب الإعدادات (لوحة الإدارة + ميزات قادمة) -->
     <div id="settingsContent" class="hidden space-y-4">
         <div class="card-bg p-5"><h3 class="gold-text font-bold mb-2">🎨 المظهر</h3><div class="flex gap-3"><button class="theme-btn flex-1 py-2 rounded-lg bg-gray-800" data-theme="dark">🌙 داكن</button><button class="theme-btn flex-1 py-2 rounded-lg bg-gray-800" data-theme="light">☀️ فاتح</button><button class="theme-btn flex-1 py-2 rounded-lg bg-gray-800" data-theme="gold">🔥 ذهبي</button></div></div>
+        
+        <!-- ميزات قادمة (أزرار وهمية) -->
+        <div class="card-bg p-5">
+            <h3 class="gold-text font-bold mb-2">🚀 ميزات قادمة</h3>
+            <div class="grid grid-cols-2 gap-2">
+                <button id="featureChatBtn" class="feature-btn text-gold p-2 rounded-xl text-sm flex items-center justify-center gap-1">🗣️ المحادثة العامة</button>
+                <button id="featureNotifyBtn" class="feature-btn text-gold p-2 rounded-xl text-sm flex items-center justify-center gap-1">📢 إشعارات فورية</button>
+                <button id="featureReportsBtn" class="feature-btn text-gold p-2 rounded-xl text-sm flex items-center justify-center gap-1">📊 تقارير متقدمة</button>
+                <button id="featureReferBtn" class="feature-btn text-gold p-2 rounded-xl text-sm flex items-center justify-center gap-1">👥 إحالة الأصدقاء</button>
+            </div>
+            <p class="text-xs text-gray-500 mt-3 text-center">✨ ميزات إضافية قيد التطوير</p>
+        </div>
+
         <div class="card-bg p-5"><h3 class="gold-text font-bold mb-2">📞 الدعم الفني</h3><button id="supportBtn" class="mt-2 text-gold underline">@nas5873</button></div>
-        <div id="adminPanel" class="card-bg p-5 hidden"><h3 class="gold-text font-bold mb-2">🛠️ لوحة الإدارة</h3><div id="adminStats" class="text-sm"></div></div>
+        <div id="adminPanel" class="card-bg p-5 hidden">
+            <h3 class="gold-text font-bold mb-2">🛠️ لوحة الإدارة</h3>
+            <div id="adminStats" class="text-sm"></div>
+            <div id="adminSubscribersList" class="mt-3 max-h-48 overflow-auto text-xs"></div>
+        </div>
         <div class="text-center text-xs text-gray-500">Store Leads Pro V3.0</div>
     </div>
 </div>
 
+<!-- الشريط السفلي -->
 <div class="fixed bottom-0 left-0 right-0 bg-black border-t border-gray-800 py-2 flex justify-around max-w-md mx-auto">
     <button id="navRadar" class="tab-active flex flex-col items-center text-xs gold-text"><span>📡</span><span>الرادار</span></button>
     <button id="navPackages" class="flex flex-col items-center text-xs text-gray-400"><span>⭐</span><span>الباقات</span></button>
@@ -66,22 +91,22 @@
 
 <script>
     // ================= التكوين =================
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyQ3E3nOgVRU1ytokWqreBSKdkwndoAE9e4kaw3oK7owZnQ8nu5T1kDnTSRL3Pq2X4kvg/exec";
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzAcV0sJTnhAaLTkqqMF_XrsTMwBvM_uHLnp1ujVUiBGF3Sxze5qksSO8ucSU-iR82kMw/exec";
     const ADMIN_CHAT_ID = 6643939693; // ضع رقمك هنا
     let currentChatId = null;
     let currentStore = { name: "", package: "free", analysesLimit: 5, analysesUsed: 0, endDate: "" };
     let allLeads = [];
 
-    // الحصول على معرف المستخدم
+    // الحصول على معرف المستخدم من تليجرام
     try {
         if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
             currentChatId = window.Telegram.WebApp.initDataUnsafe.user.id;
         } else {
-            currentChatId = ADMIN_CHAT_ID; // وضع اختبار
+            currentChatId = ADMIN_CHAT_ID;
         }
     } catch(e) { currentChatId = ADMIN_CHAT_ID; }
 
-    // ========== تحميل المستخدم ==========
+    // ========== تحميل بيانات المستخدم ==========
     async function loadUser() {
         if (!currentChatId) return;
         const res = await fetch(`${WEB_APP_URL}?action=getUser&chatId=${currentChatId}`);
@@ -96,8 +121,8 @@
             const badge = document.getElementById('userBadge');
             if (currentStore.package === 'gold') badge.innerHTML = '👑 ذهبية';
             else badge.innerHTML = '🆓 تجريبي';
-            // تحديث معلومات الباقة في تبويب الباقات
-            const remaining = currentStore.analysesLimit - currentStore.analysesUsed;
+            // تحديث معلومات الباقة
+            const remaining = Math.max(0, currentStore.analysesLimit - currentStore.analysesUsed);
             document.getElementById('currentPackageInfo').innerHTML = `
                 <p>📦 الباقة: <strong>${currentStore.package === 'gold' ? 'ذهبية 🔥' : 'تجريبية 🆓'}</strong></p>
                 <p>📊 التحليلات: ${currentStore.analysesUsed} من ${currentStore.analysesLimit}</p>
@@ -126,9 +151,9 @@
         const todayStr = new Date().toISOString().slice(0,10);
         let todayCount = 0;
         let html = '';
+        const isGold = (currentStore.package === 'gold');
         for (let lead of allLeads) {
             if (lead.date?.slice(0,10) === todayStr) todayCount++;
-            const isGold = currentStore.package === 'gold';
             html += `
                 <div class="card-bg p-3 border-r-4 border-gold">
                     <div class="flex justify-between"><span class="font-bold gold-text">${lead.username}</span></div>
@@ -151,10 +176,7 @@
         document.querySelectorAll('.analysis-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const fullText = decodeURIComponent(btn.getAttribute('data-full'));
-                if (!fullText) {
-                    alert("لا يوجد تحليل متقدم لهذه العميلة.");
-                    return;
-                }
+                if (!fullText) { alert("لا يوجد تحليل متقدم لهذه العميلة."); return; }
                 const modal = document.createElement('div');
                 modal.className = 'fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4';
                 modal.innerHTML = `
@@ -173,7 +195,7 @@
     function attachUpgradeButtons() {
         document.querySelectorAll('.upgrade-trigger').forEach(btn => {
             btn.addEventListener('click', () => {
-                alert("🔒 هذه الميزة للمشتركين الذهبيين فقط. تواصل مع الدعم للترقية.");
+                alert("🔒 هذه الميزة للمشتركين الذهبيين فقط.");
                 window.open('https://t.me/nas5873', '_blank');
             });
         });
@@ -192,19 +214,38 @@
         }
     }
 
-    // ========== لوحة الإدارة المخفية ==========
+    // ========== لوحة الإدارة (للمسؤول فقط) ==========
     async function showAdminPanel() {
         if (currentChatId != ADMIN_CHAT_ID) return;
+        const adminDiv = document.getElementById('adminPanel');
         const statsDiv = document.getElementById('adminStats');
+        const listDiv = document.getElementById('adminSubscribersList');
+        adminDiv.classList.remove('hidden');
         statsDiv.innerHTML = 'جاري التحميل...';
+        listDiv.innerHTML = '';
         try {
-            const res = await fetch(`${WEB_APP_URL}?action=getAdminData`);
-            const data = await res.json();
-            if (data.success) {
-                statsDiv.innerHTML = `<p>👥 إجمالي المشتركين: ${data.totalSubscribers}</p><p>📊 تحليلات الشهر: ${data.monthlyLeads}</p><p>🟢 نشطاء اليوم: ${data.activeToday}</p>`;
+            const resStats = await fetch(`${WEB_APP_URL}?action=getAdminData`);
+            const stats = await resStats.json();
+            const resList = await fetch(`${WEB_APP_URL}?action=getSubscribersList`);
+            const listData = await resList.json();
+            if (stats.success) {
+                statsDiv.innerHTML = `
+                    <p>👥 إجمالي المشتركين: ${stats.totalSubscribers}</p>
+                    <p>📊 تحليلات الشهر: ${stats.monthlyLeads}</p>
+                    <p>🟢 نشطاء اليوم: ${stats.activeToday}</p>
+                `;
             }
-        } catch(e) { statsDiv.innerHTML = 'خطأ في التحميل'; }
-        document.getElementById('adminPanel').classList.remove('hidden');
+            if (listData.success && listData.list.length) {
+                let tableHtml = '<table class="admin-table">成长<th>المتجر</th><th>الباقة</th><th>آخر نشاط</th></tr>';
+                for (let u of listData.list) {
+                    tableHtml += `<tr><td class="gold-text">${u.storeName || u.username || u.chatId}</td><td class="gold-text">${u.package}</td><td>${u.lastActive ? new Date(u.lastActive).toLocaleDateString() : '-'}</td></tr>`;
+                }
+                tableHtml += '</table>';
+                listDiv.innerHTML = tableHtml;
+            } else {
+                listDiv.innerHTML = '<p class="text-gray-500">لا يوجد مشتركون بعد</p>';
+            }
+        } catch(e) { statsDiv.innerHTML = 'خطأ في تحميل البيانات'; }
     }
 
     // ========== تبديل التبويبات ==========
@@ -223,13 +264,44 @@
         document.getElementById(`nav${tab.charAt(0).toUpperCase()+tab.slice(1)}`).classList.add('gold-text','tab-active');
     }
 
-    // ========== الأحداث ==========
+    // ========== تعديل اسم المتجر ==========
+    async function updateStoreName(newName) {
+        const res = await fetch(WEB_APP_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'updateStoreName', chatId: currentChatId, storeName: newName })
+        });
+        const data = await res.json();
+        if (data.success) {
+            currentStore.name = newName;
+            document.getElementById('storeNameDisplay').innerText = newName;
+            alert('✅ تم تحديث اسم المتجر');
+        } else {
+            alert('❌ فشل التحديث');
+        }
+    }
+
+    // ========== ربط الأحداث ==========
     document.getElementById('navRadar').onclick = () => switchTab('radar');
     document.getElementById('navPackages').onclick = () => switchTab('packages');
     document.getElementById('navSettings').onclick = () => switchTab('settings');
     document.getElementById('refreshBtn').onclick = () => loadLeads();
     document.getElementById('supportBtn').onclick = () => window.open('https://t.me/nas5873','_blank');
     document.getElementById('upgradeContactBtn').onclick = () => window.open('https://t.me/nas5873','_blank');
+    
+    // أزرار الميزات الوهمية
+    const upcomingMsg = () => alert("✨ هذه الميزة قيد التطوير وستتوفر قريباً جداً!");
+    document.getElementById('featureChatBtn').onclick = upcomingMsg;
+    document.getElementById('featureNotifyBtn').onclick = upcomingMsg;
+    document.getElementById('featureReportsBtn').onclick = upcomingMsg;
+    document.getElementById('featureReferBtn').onclick = upcomingMsg;
+
+    // زر تعديل الاسم
+    const editNameBtn = document.createElement('button');
+    editNameBtn.innerText = '✏️ تعديل اسم المتجر';
+    editNameBtn.className = 'btn-gold w-full mt-2 text-sm py-1';
+    editNameBtn.onclick = () => { let newName = prompt('اسم المتجر الجديد:', currentStore.name); if(newName) updateStoreName(newName); };
+    document.getElementById('currentPackageInfo').after(editNameBtn);
 
     // الثيمات
     function applyTheme(theme) {
@@ -247,4 +319,4 @@
     if (window.Telegram?.WebApp) { window.Telegram.WebApp.ready(); window.Telegram.WebApp.expand(); }
 </script>
 </body>
-            </html>
+        </html>
